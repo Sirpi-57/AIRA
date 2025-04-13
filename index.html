@@ -576,15 +576,38 @@
         let endCallInProgress = false; // Flag to prevent multiple simultaneous calls
 
         // PDF.js Worker setup
-        const { pdfjsLib } = globalThis;
-        if (typeof pdfjsLib !== 'undefined') {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.worker.min.mjs`;
-        } else {
-            console.error("PDF.js library not loaded initially!");
-            setStatus("Error: PDF Library failed to load. Check internet connection.", true);
-            if (submitButton) submitButton.disabled = true;
-            if (uploadForm) uploadForm.style.opacity = '0.5';
-        }
+        // More robust PDF.js loading
+        const loadPdfJsLibrary = async () => {
+            try {
+                // Try to load from CDN
+                if (!window.pdfjsLib) {
+                    // If not already loaded, try to load it explicitly
+                    await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.min.mjs');
+                }
+                
+                const pdfjsLib = window.pdfjsLib || globalThis.pdfjsLib;
+                if (pdfjsLib) {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.worker.min.mjs';
+                    console.log("PDF.js library loaded successfully");
+                    return true;
+                } else {
+                    throw new Error("PDF.js library not found after import");
+                }
+            } catch (error) {
+                console.error("Error loading PDF.js library:", error);
+                setStatus("Error: PDF Library failed to load. Please use a desktop browser or check your connection.", true);
+                if (submitButton) submitButton.disabled = true;
+                if (uploadForm) uploadForm.style.opacity = '0.5';
+                return false;
+            }
+        };
+        
+        // Call this at the beginning of your script or in DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadPdfJsLibrary();
+            addLog("DOM loaded. AIRA Recruiter ready.", "log-info");
+            // Rest of your initialization code...
+        });
 
         // --- Event Listeners ---
         uploadForm.addEventListener('submit', handleFormSubmit);
