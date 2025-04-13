@@ -1,0 +1,2546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Resume Ranker & AIRA Recruiter</title>
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.min.mjs" type="module"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f7f7f7;
+            color: #333;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 900px;
+            margin: 20px auto;
+        }
+
+        h1, h2 {
+            color: #1a73e8;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        h3 {
+            color: #333;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .critical-warning {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        input[type="file"],
+        textarea {
+            display: block;
+            width: calc(100% - 20px);
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        #upload-form button {
+            background-color: #1a73e8;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: background-color 0.3s ease;
+        }
+
+        #upload-form button:hover:not(:disabled) {
+            background-color: #0d47a1;
+        }
+        #upload-form button:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+
+
+        #status, #progress-log {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #status {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        #progress-log {
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 0.9em;
+            line-height: 1.4;
+            margin-top: 10px;
+        }
+        #progress-log div {
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+            border-bottom: 1px dotted #ccc;
+        }
+        #progress-log div:last-child { border-bottom: none; }
+        .log-success { color: green; }
+        .log-error { color: red; }
+        .log-info { color: blue; }
+
+
+        #results, #email-drafts-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+        }
+
+        #ranked-list ol {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        #ranked-list li {
+            background-color: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        #ranked-list li .candidate-header {
+            font-size: 1.2em;
+            color: #1a73e8;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        #ranked-list li .candidate-header .score {
+            font-weight: bold;
+            color: #1e8e3e;
+        }
+        #ranked-list li span, #ranked-list li div {
+            display: block;
+            margin-top: 5px;
+            color: #555;
+            font-size: 0.95em;
+        }
+        #ranked-list li .rationale {
+            margin-top: 8px;
+            font-style: italic;
+            color: #666;
+            border-left: 3px solid #ddd;
+            padding-left: 10px;
+        }
+        #ranked-list li .contact-info {
+            margin-top: 8px;
+            font-size: 0.9em;
+            color: #444;
+        }
+
+        /* Email Draft Styles */
+        #email-drafts-section .email-draft {
+            background-color: #e9f0fc;
+            border: 1px solid #cddcff;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        #email-drafts-section .email-draft h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #0d47a1;
+        }
+        #email-drafts-section .email-draft pre {
+            background-color: #fff;
+            padding: 10px;
+            border: 1px dashed #ccc;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: monospace;
+            font-size: 0.9em;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .draft-error {
+            color: red;
+            font-style: italic;
+        }
+
+        /* AIRA Call Styles */
+        #call-status-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+        }
+
+        .call-status {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .call-status-info {
+            margin-bottom: 5px;
+            color: #1a73e8;
+        }
+
+        .call-status-error {
+            margin-bottom: 5px;
+            color: #dc3545;
+        }
+
+        .aira-call-button {
+            background-color: #34a853;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            margin-top: 15px;
+            transition: background-color 0.3s ease;
+        }
+
+        .aira-call-button:hover:not(:disabled) {
+            background-color: #2e7d32;
+        }
+
+        .aira-call-button:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+
+        .view-transcript-button {
+            background-color: #fbbc05;
+            color: #333;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 10px;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: black;
+        }
+
+        #transcript-content {
+            margin-top: 20px;
+        }
+
+        .transcript-entry {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px dotted #eee;
+        }
+
+        .transcript-aira {
+            color: #1a73e8;
+            font-weight: bold;
+        }
+
+        .transcript-candidate {
+            color: #333;
+        }
+
+        .transcript-metadata {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        .transcript-decision {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .decision-pass {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .decision-fail {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .aira-decision {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .interview-scheduled {
+            background-color: #e3f2fd;
+            border: 1px solid #bbdefb;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            color: #0d47a1;
+        }
+
+        .settings-panel {
+            background-color: #f0f7ff;
+            border: 1px solid #cddcff;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .settings-panel h3 {
+            margin-top: 0;
+            color: #1a73e8;
+        }
+
+        .api-key-input {
+            width: calc(100% - 22px);
+            padding: 8px;
+            margin: 5px 0 15px 0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+
+        .settings-toggle {
+            margin: 10px 0;
+        }
+
+        #settings-toggle-btn {
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        #call-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        #call-controls button {
+            background-color: #ea4335;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #audio-output, #audio-visualizer {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .recording-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background-color: red;
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+        .hidden {
+            display: none;
+        }
+        .visible {
+            display: block;
+        }
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+
+        #loading-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            border: 5px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 5px solid #1a73e8;
+            width: 50px;
+            height: 50px;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+    </style>
+
+</head>
+<body>
+
+    <div class="container">
+        <h1>Multi-Resume Ranker & AIRA Recruiter</h1>
+
+        <p class="critical-warning">
+            🔴 **WARNING:** This application requires API keys in your .env file for Mistral, Gemini/Google, Claude, OpenAI, and Twilio.
+        </p>
+
+        <form id="upload-form">
+            <label for="resume-files">Upload Resumes (PDF, Max 10 files):</label>
+            <input type="file" id="resume-files" name="resumeFiles" accept=".pdf" required multiple>
+
+            <label for="job-description">Job Description:</label>
+            <textarea id="job-description" name="jobDescription" placeholder="Paste the full job description here..." required></textarea>
+
+            <button type="submit" id="submit-button">Parse, Rank & Draft Emails</button>
+        </form>
+
+        <div id="status"></div>
+        <div id="progress-log" class="hidden"></div>
+        <div id="loading-overlay" class="hidden">
+            <div class="spinner"></div>
+        </div>
+
+        <div id="results" class="hidden">
+            <h2>Ranking Results</h2>
+            <div id="ranked-list">
+                <ol>
+                </ol>
+            </div>
+        </div>
+
+        <div id="email-drafts-section" class="hidden">
+            <h2>Email Drafts for Top Candidates (Score > 80%)</h2>
+            <p>Review the drafts below. You will need to manually copy, paste, replace placeholders (like [Job Title], [Company Name], [Job Location], [Salary Details]), and send these emails using your own email client.</p>
+            <div id="email-drafts-output">
+            </div>
+        </div>
+
+        <div id="call-status-section" class="hidden">
+            <h2>AIRA Call Status</h2>
+            <div id="call-status-container" class="call-status"></div>
+
+            <div id="call-audio-interfaces" class="hidden">
+                <h3>AIRA Call Audio</h3>
+                <audio id="audio-output" controls></audio>
+                <canvas id="audio-visualizer"></canvas>
+
+                <div id="call-controls">
+                    <button id="end-call-btn" class="hidden">End Call</button>
+                    <div id="recording-status" class="hidden">
+                        <span class="recording-indicator"></span> Recording candidate response...
+                    </div>
+                </div>
+            </div>
+
+            <button id="view-transcript-button" class="view-transcript-button hidden">
+                View Full Transcript
+            </button>
+        </div>
+    </div>
+
+    <div id="transcript-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Call Transcript</h3>
+            <div id="transcript-content"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- Configuration ---
+        const BACKEND_BASE_URL = 'https://supreme-train-g47qx5r9wxqrf9r4j-5000.app.github.dev'; // Your Codespace backend URL
+
+        // --- DOM Elements ---
+        const uploadForm = document.getElementById('upload-form');
+        const resumeFilesInput = document.getElementById('resume-files');
+        const jobDescriptionInput = document.getElementById('job-description');
+        const statusDiv = document.getElementById('status');
+        const progressLogDiv = document.getElementById('progress-log');
+        const resultsDiv = document.getElementById('results');
+        const rankedListOl = document.querySelector('#ranked-list ol');
+        const emailDraftsSection = document.getElementById('email-drafts-section');
+        const emailDraftsOutputDiv = document.getElementById('email-drafts-output');
+        const callStatusSection = document.getElementById('call-status-section');
+        const callStatusContainer = document.getElementById('call-status-container');
+        const callAudioInterfaces = document.getElementById('call-audio-interfaces');
+        const audioOutput = document.getElementById('audio-output');
+        const audioVisualizer = document.getElementById('audio-visualizer');
+        const endCallBtn = document.getElementById('end-call-btn');
+        const recordingStatus = document.getElementById('recording-status');
+        const viewTranscriptButton = document.getElementById('view-transcript-button');
+        const transcriptModal = document.getElementById('transcript-modal');
+        const transcriptContent = document.getElementById('transcript-content');
+        const closeTranscriptButton = document.querySelector('.close');
+        const submitButton = document.getElementById('submit-button');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+
+        // --- Global state ---
+        window.currentRankings = [];
+        window.activeCall = null;
+        window.mediaRecorder = null;
+        window.audioContext = null;
+        window.audioStream = null;
+
+        // Add this variable at the top level, near your other global variables
+        let endCallInProgress = false; // Flag to prevent multiple simultaneous calls
+
+        // PDF.js Worker setup
+        const { pdfjsLib } = globalThis;
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.worker.min.mjs`;
+        } else {
+            console.error("PDF.js library not loaded initially!");
+            setStatus("Error: PDF Library failed to load. Check internet connection.", true);
+            if (submitButton) submitButton.disabled = true;
+            if (uploadForm) uploadForm.style.opacity = '0.5';
+        }
+
+        // --- Event Listeners ---
+        uploadForm.addEventListener('submit', handleFormSubmit);
+
+        // Close transcript modal when clicking X
+        if (closeTranscriptButton) {
+            closeTranscriptButton.onclick = function() {
+                transcriptModal.style.display = 'none';
+            };
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            if (event.target === transcriptModal) {
+                transcriptModal.style.display = 'none';
+            }
+        };
+
+        // End call button
+        if (endCallBtn) {
+            endCallBtn.addEventListener('click', function() {
+                // The endActiveCall function now handles duplicate call prevention internally
+                endActiveCall();
+            });
+        }
+
+        // --- Main Handler ---
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+
+            clearPreviousResults();
+            submitButton.disabled = true;
+            setStatus('Starting process...');
+            progressLogDiv.classList.remove('hidden');
+            addLog('Initialization complete.', 'log-info');
+            loadingOverlay.classList.add('active');
+
+            const files = resumeFilesInput.files;
+            const jobDescription = jobDescriptionInput.value.trim();
+
+            // Input Validations
+            if (!validateInputs(files, jobDescription)) {
+                loadingOverlay.classList.remove('active');
+                submitButton.disabled = false;
+                return;
+            }
+
+            addLog(`Processing ${files.length} resume(s)...`, 'log-info');
+
+            try {
+                // --- Step 1: Send files and job description to backend for async processing ---
+                const formData = new FormData();
+                for (let i = 0; i < files.length; i++) {
+                    formData.append('resumeFiles', files[i]);
+                }
+                formData.append('jobDescription', jobDescription);
+
+                // Call the async endpoint to start processing
+                const response = await fetch(`${BACKEND_BASE_URL}/process_resumes`, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    addLog('Error response: ' + errorText, 'log-error');
+                    throw new Error(errorText || 'Failed to start resume processing');
+                }
+
+                // Get the response text and parse JSON
+                const responseText = await response.text();
+                
+                if (!responseText) {
+                    throw new Error('Server returned an empty response');
+                }
+
+                addLog(`Response received (${responseText.length} chars)`, 'log-info');
+
+                // Parse the response to get the task ID
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (jsonError) {
+                    addLog('JSON parsing error: ' + jsonError.message, 'log-error');
+                    if (responseText.length < 100) {
+                        addLog('Raw response: ' + responseText, 'log-error');
+                    } else {
+                        addLog('Raw response (truncated): ' + responseText.substring(0, 100) + '...', 'log-error');
+                    }
+                    throw new Error('Failed to parse server response as JSON');
+                }
+
+                if (!data.taskId) {
+                    throw new Error('Server response missing task ID');
+                }
+
+                const taskId = data.taskId;
+                addLog(`Processing task started with ID: ${taskId}`, 'log-info');
+                
+                // Update status
+                setStatus(`Processing in progress... 0%`);
+                
+                // Show results container in advance
+                resultsDiv.classList.remove('hidden');
+                rankedListOl.innerHTML = '<li>Processing resumes... Please wait.</li>';
+                
+                // Start polling for task status
+                await pollTaskStatus(taskId);
+
+            } catch (error) {
+                setStatus('Error: ' + error.message, true);
+                addLog('Error: ' + error.message, 'log-error');
+                loadingOverlay.classList.remove('active');
+                submitButton.disabled = false;
+            }
+        }
+
+        // --- Validation Functions ---
+        function validateInputs(files, jobDescription) {
+            if (files.length === 0) {
+                setStatus('Error: No resume files selected.', true);
+                addLog('Validation Error: No resume files selected.', 'log-error');
+                return false;
+            }
+            if (files.length > 10) {
+                setStatus(`Error: Too many files selected. Maximum is 10.`, true);
+                 addLog('Validation Error: Too many files selected.', 'log-error');
+                return false;
+            }
+            if (!jobDescription) {
+                setStatus('Error: Job Description cannot be empty.', true);
+                 addLog('Validation Error: Job Description cannot be empty.', 'log-error');
+                return false;
+            }
+            return true;
+        }
+
+        // --- UI Functions ---
+
+        function displayRankedResults(rankings) {
+            rankedListOl.innerHTML = '';
+            if (!rankings || rankings.length === 0) {
+                rankedListOl.innerHTML = '<li>No candidates could be ranked or data format issue.</li>';
+                resultsDiv.classList.remove('hidden');
+                return;
+            }
+
+            rankings.forEach((candidate, index) => {
+                const li = document.createElement('li');
+                const name = candidate?.candidateName || 'Unknown Name';
+                const score = (candidate && typeof candidate.matchScore === 'number') ? candidate.matchScore.toFixed(0) : 'N/A';
+                const rationale = candidate?.matchRationale || 'No rationale provided.';
+                const fileName = candidate?.fileName || 'Unknown File';
+                const email = candidate?.email || 'N/A';
+                const phone = candidate?.phoneNumber || 'N/A';
+                const jobTitle = candidate?.jobTitle || 'N/A'; // Ensure job title is captured
+
+                li.innerHTML = `
+                        <div class="candidate-header">${index + 1}. ${escapeHtml(name)} (Score: <span class="score">${escapeHtml(score)}%</span>)</div>
+                        <span><em>Source File:</em> ${escapeHtml(fileName)}</span>
+                        <div class="contact-info">
+                            <strong>Email:</strong> ${escapeHtml(email)} | <strong>Phone:</strong> ${escapeHtml(phone)}
+                        </div>
+                        <div class="rationale">${escapeHtml(rationale)}</div>
+                    `;
+
+                // Add AIRA call button for candidates with score >= 70 and a phone number
+                if (candidate && candidate.matchScore >= 70 && phone && phone !== 'N/A') {
+                    const callButton = document.createElement('button');
+                    callButton.textContent = 'Initiate AIRA Call';
+                    callButton.className = 'aira-call-button';
+                    callButton.dataset.candidateIndex = index;
+                    callButton.addEventListener('click', handleAIRACallButtonClick);
+                    li.appendChild(callButton);
+                } else if (candidate && candidate.matchScore >= 70) {
+                     const noPhoneMsg = document.createElement('span');
+                     noPhoneMsg.textContent = ' (Cannot call: No phone number found)';
+                     noPhoneMsg.style.fontStyle = 'italic';
+                     noPhoneMsg.style.color = '#777';
+                     li.querySelector('.contact-info').appendChild(noPhoneMsg);
+                }
+
+                rankedListOl.appendChild(li);
+            });
+            resultsDiv.classList.remove('hidden');
+        }
+
+        function displaySingleEmailDraft(candidateName, emailBody) {
+            const draftDiv = document.createElement('div');
+            draftDiv.className = 'email-draft';
+            // Add data attribute for tracking
+            draftDiv.dataset.candidateName = candidateName || 'Unknown';
+
+            let contentHtml;
+            if (emailBody) {
+                contentHtml = `<pre>${escapeHtml(emailBody)}</pre>`;
+            } else {
+                contentHtml = `<p class="draft-error">An unknown error occurred generating the draft.</p>`;
+            }
+
+            draftDiv.innerHTML = `
+                    <h4>Draft for: ${escapeHtml(candidateName || 'Unknown Candidate')}</h4>
+                    ${contentHtml}
+                `;
+            emailDraftsOutputDiv.appendChild(draftDiv);
+        }
+
+        function setStatus(message, isError = false) {
+            statusDiv.textContent = message;
+            statusDiv.style.color = isError ? '#dc3545' : '#28a745';
+        }
+
+        function addLog(message, type = 'log-info') {
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logEntry.className = type;
+            progressLogDiv.appendChild(logEntry);
+            progressLogDiv.scrollTop = progressLogDiv.scrollHeight; // Auto-scroll
+            progressLogDiv.classList.remove('hidden');
+        }
+
+        function clearPreviousResults() {
+            setStatus('');
+            progressLogDiv.innerHTML = '';
+            progressLogDiv.classList.add('hidden');
+            resultsDiv.classList.add('hidden');
+            rankedListOl.innerHTML = '';
+            emailDraftsSection.classList.add('hidden'); // Hide section
+            emailDraftsOutputDiv.innerHTML = ''; // Clear drafts
+            callStatusSection.classList.add('hidden');
+            callStatusContainer.innerHTML = '';
+            callAudioInterfaces.classList.add('hidden');
+            viewTranscriptButton.classList.add('hidden');
+            window.currentRankings = []; // Clear global rankings
+            cleanupCallResources(); // Ensure any active call state is cleared
+        }
+
+
+        function escapeHtml(unsafe) {
+            if (typeof unsafe !== 'string') {
+                try {
+                    // Attempt to convert non-strings, return empty on fail
+                    return String(unsafe);
+                } catch (e) {
+                    console.warn("escapeHtml received non-string:", unsafe);
+                    return '';
+                }
+            }
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        function updateCandidateWithAIRAResult(candidateIndex, decision) {
+            // Find the candidate's list item in the DOM
+            const candidateItem = document.querySelectorAll('#ranked-list li')[candidateIndex];
+            
+            // Handle missing DOM element
+            if (!candidateItem) {
+                console.warn("Could not update AIRA result for index:", candidateIndex, "- DOM element not found");
+                return;
+            }
+            
+            // Handle missing or incomplete decision data
+            if (!decision) {
+                decision = {
+                    outcome: 'UNKNOWN',
+                    rationale: 'No assessment data available'
+                };
+                console.warn("Missing decision data, using default for candidate index:", candidateIndex);
+            }
+
+            // Remove existing decision if any
+            const existingDecision = candidateItem.querySelector('.aira-decision');
+            if (existingDecision) {
+                existingDecision.remove();
+            }
+            
+            // Remove existing scheduling info if any
+            const existingScheduling = candidateItem.querySelector('.interview-scheduled');
+            if (existingScheduling) {
+                existingScheduling.remove();
+            }
+
+            // Create decision element
+            const decisionDiv = document.createElement('div');
+            const outcome = decision.outcome || 'UNKNOWN'; // Handle potential missing outcome
+            const rationale = decision.rationale || 'No rationale provided.';
+            const decisionClass = outcome === 'PASS' ? 'decision-pass' : 'decision-fail';
+
+            decisionDiv.className = `aira-decision ${decisionClass}`;
+            decisionDiv.innerHTML = `
+                <strong>AIRA Assessment:</strong> ${outcome}<br>
+                <span>${escapeHtml(rationale)}</span>
+            `;
+
+            // Add before the button if it exists
+            const callButton = candidateItem.querySelector('.aira-call-button');
+            if (callButton) {
+                callButton.insertAdjacentElement('beforebegin', decisionDiv);
+                callButton.textContent = 'Call Completed';
+                callButton.disabled = true;
+            } else {
+                // If button somehow doesn't exist, just append
+                candidateItem.appendChild(decisionDiv);
+            }
+
+            // If passed and interview scheduled, add that info
+            const candidates = window.currentRankings || [];
+            const candidate = candidates[candidateIndex];
+
+            if (candidate && candidate.interviewScheduling && 
+                candidate.interviewScheduling.scheduled && 
+                candidate.interviewScheduling.dateTime) {
+                
+                const schedulingDiv = document.createElement('div');
+                schedulingDiv.className = 'interview-scheduled';
+
+                let formattedDate = 'Invalid Date';
+                try {
+                    const date = new Date(candidate.interviewScheduling.dateTime);
+                    if (!isNaN(date)) { // Check if date is valid
+                        formattedDate = date.toLocaleString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            timeZoneName: 'short' // Include timezone info
+                        });
+                    }
+                } catch (e) {
+                    console.error("Error formatting interview date:", e);
+                }
+
+                schedulingDiv.innerHTML = `
+                    <strong>Interview Scheduled:</strong> ${formattedDate}<br>
+                    <span>${escapeHtml(candidate.interviewScheduling.interviewType || 'Unknown Type')} Interview</span>
+                `;
+
+                decisionDiv.insertAdjacentElement('afterend', schedulingDiv);
+            } else if (candidate && candidate.interviewScheduling && candidate.interviewScheduling.scheduled) {
+                console.warn("Interview scheduled but dateTime is missing or invalid for index:", candidateIndex);
+            }
+        }
+
+        function showTranscriptModal(candidateData) {
+            if (!transcriptModal || !transcriptContent) {
+                console.error("Cannot show transcript: Missing modal elements");
+                alert("Could not load transcript: UI elements missing");
+                return;
+            }
+            
+            if (!candidateData) {
+                console.error("Cannot show transcript: Missing candidate data");
+                alert("Could not load transcript data: Candidate information missing");
+                return;
+            }
+            
+            // If airaAssessment is missing entirely, create a placeholder
+            if (!candidateData.airaAssessment) {
+                console.warn("No assessment data available, creating placeholder");
+                candidateData.airaAssessment = {
+                    callCompleted: true,
+                    callDate: new Date().toISOString(),
+                    callDuration: 'N/A',
+                    fullTranscript: {
+                        metadata: {
+                            candidateName: candidateData.candidateName || 'Unknown',
+                            position: candidateData.jobTitle || 'Unknown Position',
+                            date: new Date().toISOString(),
+                            duration: "N/A"
+                        },
+                        conversation: [],
+                        keyInsights: [],
+                        decision: {
+                            outcome: "UNKNOWN",
+                            rationale: "Assessment data unavailable"
+                        }
+                    }
+                };
+            }
+            
+            // Ensure fullTranscript exists to avoid errors
+            if (!candidateData.airaAssessment.fullTranscript) {
+                candidateData.airaAssessment.fullTranscript = {
+                    metadata: {
+                        candidateName: candidateData.candidateName || 'Unknown',
+                        position: candidateData.jobTitle || 'Unknown Position',
+                        date: candidateData.airaAssessment.callDate || new Date().toISOString(),
+                        duration: candidateData.airaAssessment.callDuration || "N/A"
+                    },
+                    conversation: [],
+                    keyInsights: [],
+                    decision: {
+                        outcome: "UNKNOWN",
+                        rationale: "Transcript data unavailable"
+                    }
+                };
+            }
+
+            // Format transcript data
+            const transcript = candidateData.airaAssessment.fullTranscript;
+            let transcriptHtml = '';
+
+            // --- Metadata ---
+            if (transcript.metadata) {
+                const dateStr = transcript.metadata.date ? new Date(transcript.metadata.date).toLocaleString() : 'N/A';
+                const durationStr = transcript.metadata.duration || 'N/A';
+                const positionStr = transcript.metadata.position || candidateData.jobTitle || 'N/A';
+
+                transcriptHtml += `<div class="transcript-metadata">
+                    <strong>Candidate:</strong> ${escapeHtml(candidateData.candidateName || 'N/A')}<br>
+                    <strong>Position:</strong> ${escapeHtml(positionStr)}<br>
+                    <strong>Date:</strong> ${escapeHtml(dateStr)}<br>
+                    <strong>Duration:</strong> ${escapeHtml(durationStr)}
+                </div>`;
+            } else {
+                transcriptHtml += `<div class="transcript-metadata">Metadata not available.</div>`;
+            }
+
+            // --- Conversation ---
+            if (transcript.conversation && transcript.conversation.length > 0) {
+                transcriptHtml += '<h4>Conversation</h4>';
+                transcript.conversation.forEach((entry, index) => {
+                    // Skip system prompt (often the first entry)
+                    if (entry.role === 'system') return;
+
+                    const roleClass = entry.role === 'assistant' ? 'transcript-aira' : 'transcript-candidate';
+                    const roleName = entry.role === 'assistant' ? 'AIRA' : 'Candidate';
+                    const content = entry.content || '(No content)';
+
+                    transcriptHtml += `<div class="transcript-entry">
+                        <span class="${roleClass}">${roleName}:</span> ${escapeHtml(content)}
+                    </div>`;
+                });
+            } else {
+                transcriptHtml += '<h4>Conversation</h4><p>No conversation recorded.</p>';
+            }
+
+            // --- Key insights ---
+            if (transcript.keyInsights && transcript.keyInsights.length > 0) {
+                transcriptHtml += '<h4>Key Insights</h4><ul>';
+                transcript.keyInsights.forEach(insight => {
+                    transcriptHtml += `<li>${escapeHtml(insight || '(Empty insight)')}</li>`;
+                });
+                transcriptHtml += '</ul>';
+            } else {
+                transcriptHtml += '<h4>Key Insights</h4><p>No key insights generated.</p>';
+            }
+
+            // --- Decision ---
+            if (transcript.decision) {
+                const outcome = transcript.decision.outcome || 'UNKNOWN';
+                const score = typeof transcript.decision.score === 'number' ? `${transcript.decision.score}/100` : 'N/A';
+                const rationale = transcript.decision.rationale || 'No rationale provided.';
+                const decisionClass = outcome === 'PASS' ? 'decision-pass' : 'decision-fail';
+
+                transcriptHtml += `<div class="transcript-decision ${decisionClass}">
+                    <h4>Decision: ${escapeHtml(outcome)}</h4>
+                    <strong>Score:</strong> ${escapeHtml(score)}<br>
+                    <strong>Rationale:</strong> ${escapeHtml(rationale)}
+                </div>`;
+            } else {
+                transcriptHtml += `<div class="transcript-decision">Decision not available.</div>`;
+            }
+
+            // --- Interview Scheduling Info (if available) ---
+            if (candidateData.interviewScheduling && candidateData.interviewScheduling.scheduled && candidateData.interviewScheduling.dateTime) {
+                let formattedDate = 'Invalid Date';
+                try {
+                    const date = new Date(candidateData.interviewScheduling.dateTime);
+                    if (!isNaN(date)) { // Check if date is valid
+                        formattedDate = date.toLocaleString('en-US', {
+                            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                            hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
+                        });
+                    }
+                } catch (e) {
+                    console.error("Error formatting interview date for modal:", e);
+                }
+
+                transcriptHtml += `<div class="interview-scheduled" style="margin-top: 15px;"> <h4>Interview Scheduled</h4>
+                    <strong>Date/Time:</strong> ${formattedDate}<br>
+                    <strong>Type:</strong> ${escapeHtml(candidateData.interviewScheduling.interviewType || 'Unknown Type')} Interview<br>
+                    <strong>Confirmation Status:</strong> ${candidateData.interviewScheduling.confirmationSent ? 'Sent' : 'Pending'}
+                </div>`;
+            }
+
+            // Set content and show modal
+            transcriptContent.innerHTML = transcriptHtml;
+            transcriptModal.style.display = 'block';
+        }
+
+
+        // --- AIRA Call Implementation ---
+
+        async function handleAIRACallButtonClick(event) {
+            const button = event.target;
+            const candidateIndex = parseInt(button.dataset.candidateIndex);
+
+            // Disable all call buttons during a call
+            const allButtons = document.querySelectorAll('.aira-call-button');
+            allButtons.forEach(btn => btn.disabled = true);
+
+            // Get candidate data
+            const candidates = window.currentRankings || [];
+            if (candidateIndex >= candidates.length) {
+                alert('Candidate data not found or index out of bounds.');
+                allButtons.forEach(btn => { if (!btn.textContent.includes('Completed')) btn.disabled = false; }); // Re-enable non-completed buttons
+                return;
+            }
+
+            const candidateData = candidates[candidateIndex];
+
+            // Verify we have phone number for the candidate
+            if (!candidateData.phoneNumber || candidateData.phoneNumber === 'N/A') {
+                alert('Cannot initiate call: No phone number found for this candidate');
+                allButtons.forEach(btn => { if (!btn.textContent.includes('Completed')) btn.disabled = false; });
+                return;
+            }
+
+            // Verify we have a job title
+             if (!candidateData.jobTitle || candidateData.jobTitle === 'N/A') {
+                // Try to get job title from the input field as a fallback
+                const jobDescText = jobDescriptionInput.value.trim();
+                // Basic extraction (assuming first line might be the title)
+                const firstLine = jobDescText.split('\n')[0];
+                if (firstLine && firstLine.length < 100) { // Basic sanity check
+                     candidateData.jobTitle = firstLine;
+                     addLog(`Job title inferred from description: ${candidateData.jobTitle}`, 'log-info');
+                 } else {
+                     alert('Cannot initiate call: Job Title not found for this candidate. Please ensure it was parsed correctly or manually add it.');
+                     allButtons.forEach(btn => { if (!btn.textContent.includes('Completed')) btn.disabled = false; });
+                     return;
+                 }
+             }
+
+            // Show call status section
+            callStatusSection.classList.remove('hidden');
+            callStatusContainer.innerHTML = ''; // Clear previous status
+
+            // Show progress log if hidden
+            progressLogDiv.classList.remove('hidden');
+            addLog(`Starting AIRA call with ${candidateData.candidateName || 'Unknown Candidate'} for ${candidateData.jobTitle}`, 'log-info');
+            loadingOverlay.classList.add('active');
+
+            // Setup audio recording *before* initiating call
+            const audioReady = await setupAudioRecording();
+             if (!audioReady) {
+                 loadingOverlay.classList.remove('active');
+                 allButtons.forEach(btn => { if (!btn.textContent.includes('Completed')) btn.disabled = false; });
+                 return; // Stop if audio setup failed
+             }
+
+            try {
+                // Initiate the actual call using Twilio via backend
+                const response = await fetch(`${BACKEND_BASE_URL}/initiate_call`, { // <<< FIXED URL
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        candidatePhone: candidateData.phoneNumber,
+                        candidateName: candidateData.candidateName,
+                        jobTitle: candidateData.jobTitle // Send job title
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    addLog('Call initiation error response: ' + errorText, 'log-error');
+                    throw new Error(errorText || 'Failed to initiate call via backend');
+                }
+
+                const responseText = await response.text();
+                let callResult;
+                try {
+                    callResult = JSON.parse(responseText);
+                    if (!callResult.sid) {
+                         throw new Error("Backend response missing call SID.");
+                    }
+                } catch (jsonError) {
+                    addLog('JSON parsing error (initiate_call): ' + jsonError.message, 'log-error');
+                    addLog('Raw response (initiate_call): ' + responseText, 'log-error');
+                    throw new Error('Failed to parse call initiation response as JSON');
+                }
+
+                // Show audio interface for real-time call (might be redundant if setupAudioRecording shows it)
+                callAudioInterfaces.classList.remove('hidden');
+
+                // Store the active call information.
+                window.activeCall = {
+                    candidateData: candidateData,
+                    candidateIndex: candidateIndex,
+                    twilioCallSid: callResult.sid,
+                    callStatus: 'initiating',
+                    callStartTime: new Date(),
+                    conversation: [
+                         // System prompt will be added by the backend or initial response call
+                    ],
+                    audioRecordings: [], // Store blobs if needed for local playback/debug
+                    transcript: {
+                        metadata: {
+                            candidateName: candidateData.candidateName || 'N/A',
+                            position: candidateData.jobTitle || 'N/A', // Use job title
+                            date: new Date().toISOString(),
+                            duration: "00:00:00"
+                        },
+                        conversation: [],
+                        keyInsights: [],
+                        decision: null
+                    }
+                };
+
+                // Show end call button
+                endCallBtn.classList.remove('hidden');
+                // Ensure the onclick is set (might be redundant if set globally, but safe)
+                endCallBtn.onclick = endActiveCall;
+
+                // Update status
+                updateCallStatus(`Call initiated with SID: ${callResult.sid}. Waiting for connection...`);
+                addLog(`Call SID: ${callResult.sid}`, 'log-info');
+                loadingOverlay.classList.remove('active');
+
+                // Start polling for call status (or rely on webhooks if implemented)
+                // pollCallStatus(callResult.sid); // Example: if using polling
+
+            } catch (error) {
+                console.error('Failed to initiate or manage call:', error);
+                addLog(`Failed to initiate call: ${error.message}`, 'log-error');
+                updateCallStatus(`Call failed: ${error.message}`, true);
+                loadingOverlay.classList.remove('active');
+                cleanupCallResources(); // Clean up UI elements
+            }
+        }
+
+        // End the active call manually
+        // Replace your current endActiveCall function with this one
+        async function endActiveCall() {
+            if (endCallInProgress) {
+                addLog("End call operation already in progress, ignoring duplicate request", "log-warn");
+                return;
+            }
+            
+            if (!window.activeCall || !window.activeCall.twilioCallSid) {
+                updateCallStatus("No active call to end.", true);
+                addLog("Attempted to end call, but no active call found.", "log-error");
+                // Ensure UI is reset just in case
+                cleanupCallResources();
+                return;
+            }
+
+            // Set flag to prevent duplicate calls
+            endCallInProgress = true;
+
+            const callSid = window.activeCall.twilioCallSid;
+            const candidateIndex = window.activeCall.candidateIndex; // Keep index for cleanup
+
+            updateCallStatus(`Ending call (SID: ${callSid})...`);
+            addLog(`User requested to end call SID: ${callSid}`, 'log-info');
+            loadingOverlay.classList.add('active');
+            endCallBtn.disabled = true; // Disable button while ending
+
+            try {
+                // Stop local media recording if active
+                if (window.mediaRecorder && window.mediaRecorder.state === "recording") {
+                    window.mediaRecorder.stop();
+                    addLog("Stopped local media recorder.", "log-info");
+                }
+
+                // Call backend to end the Twilio call
+                const response = await fetch(`${BACKEND_BASE_URL}/end_call`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        callSid: callSid,
+                    }),
+                });
+
+                let responseData = null;
+                try {
+                    const responseText = await response.text();
+                    if (responseText) {
+                        responseData = JSON.parse(responseText);
+                    }
+                } catch (jsonError) {
+                    // Non-JSON or empty response is ok, just log it
+                    addLog(`Note: Non-JSON response from end_call: ${jsonError.message}`, 'log-info');
+                }
+
+                if (!response.ok) {
+                    // Check if we got a meaningful error message in the response
+                    let errorMessage = "Unknown error";
+                    if (responseData && responseData.error) {
+                        errorMessage = responseData.error;
+                    }
+                    
+                    addLog(`Error response from /end_call: ${errorMessage}`, 'log-error');
+                    throw new Error(errorMessage || 'Backend failed to confirm call end');
+                }
+
+                // If we get here, the call was ended successfully (or already ended)
+                const callStatus = responseData && responseData.call_status ? responseData.call_status : 'ended';
+                addLog(`Backend confirmed call end request for SID: ${callSid}. Status: ${callStatus}`, 'log-info');
+
+                updateCallStatus(`Call (SID: ${callSid}) ending process initiated.`);
+                
+                // Small delay before processing results
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Since we're manually ending the call, let's trigger the processing now
+                await processCompletedCall();
+
+            } catch (error) {
+                console.error("Error during manual call end:", error);
+                updateCallStatus(`Error ending call: ${error.message}`, true);
+                addLog(`Error ending call SID ${callSid}: ${error.message}`, 'log-error');
+                
+                // Despite error, try to process the call data anyway, if available
+                try {
+                    await processCompletedCall();
+                } catch (processError) {
+                    // Just log, don't throw - we still need to do cleanup
+                    console.error("Additional error processing call after end error:", processError);
+                    addLog(`Failed to process call after end error: ${processError.message}`, 'log-error');
+                }
+            } finally {
+                loadingOverlay.classList.remove('active');
+                // Hide the end call button immediately
+                endCallBtn.classList.add('hidden');
+                endCallBtn.disabled = false; // Reset state for future use
+                
+                // If the call wasn't properly processed, do cleanup as a fallback
+                if (window.activeCall && window.activeCall.twilioCallSid === callSid) {
+                    cleanupCallResources();
+                }
+                
+                // Reset the flag so future end calls can proceed
+                endCallInProgress = false;
+            }
+        }
+
+
+        // Process completed call results - This function is called *after* the call is confirmed ended (e.g., by handleCallEnded)
+        async function processCompletedCall() {
+            // Make a copy of the active call data first to avoid race conditions
+            const activeCallData = window.activeCall ? {
+                twilioCallSid: window.activeCall.twilioCallSid,
+                candidateIndex: window.activeCall.candidateIndex,
+                transcript: window.activeCall.transcript ? {...window.activeCall.transcript} : null
+            } : null;
+            
+            if (!activeCallData) {
+                addLog("processCompletedCall triggered, but no active call data found.", "log-warn");
+                cleanupCallResources(); // Attempt cleanup anyway
+                return;
+            }
+
+            const callSid = activeCallData.twilioCallSid;
+            const candidateIndex = activeCallData.candidateIndex;
+            
+            addLog(`Processing completed call results for SID: ${callSid}`, 'log-info');
+            updateCallStatus(`Call (SID: ${callSid}) completed. Fetching transcript and analysis...`);
+            loadingOverlay.classList.add('active');
+
+            try {
+                // Get the final call transcript and analysis from the backend
+                const response = await fetch(`${BACKEND_BASE_URL}/get_transcript`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        callSid: callSid,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    addLog(`Error fetching transcript for SID ${callSid}: ${errorText}`, 'log-error');
+                    throw new Error(errorText || 'Failed to retrieve transcript from backend');
+                }
+
+                // Parse the response data
+                const responseText = await response.text();
+                let transcriptData;
+                
+                try {
+                    transcriptData = JSON.parse(responseText);
+                    console.log("Raw transcript data:", transcriptData); // Log for debugging
+                    
+                    // Look for data in the expected structure
+                    let finalTranscript = null;
+                    
+                    // The backend might return the data in different structures
+                    // Check for all possible locations
+                    if (transcriptData.analysis) {
+                        finalTranscript = transcriptData.analysis;
+                        addLog("Found transcript data in analysis field", 'log-info');
+                    } 
+                    else if (transcriptData.transcript) {
+                        finalTranscript = transcriptData.transcript;
+                        addLog("Found transcript data in transcript field", 'log-info');
+                    }
+                    else {
+                        addLog("Could not find transcript data in expected fields, using response as is", 'log-warn');
+                        finalTranscript = transcriptData; // Use the whole response
+                    }
+                    
+                    // Ensure we have the required structure
+                    if (!finalTranscript) {
+                        finalTranscript = {};
+                    }
+                    
+                    // Ensure we have decision data
+                    if (!finalTranscript.decision) {
+                        finalTranscript.decision = {
+                            outcome: "UNKNOWN",
+                            rationale: "Analysis data missing or incomplete"
+                        };
+                    }
+                    
+                    // Ensure we have metadata
+                    if (!finalTranscript.metadata) {
+                        finalTranscript.metadata = {
+                            candidateName: activeCallData.candidateIndex !== null ? 
+                                (window.currentRankings[activeCallData.candidateIndex]?.candidateName || 'Unknown') : 
+                                'Unknown',
+                            position: activeCallData.candidateIndex !== null ? 
+                                (window.currentRankings[activeCallData.candidateIndex]?.jobTitle || 'Unknown Position') : 
+                                'Unknown Position',
+                            date: new Date().toISOString(),
+                            duration: "N/A"
+                        };
+                    }
+                    
+                    // Ensure we have conversation data
+                    if (!finalTranscript.conversation) {
+                        finalTranscript.conversation = [];
+                    }
+                    
+                    // Ensure we have key insights
+                    if (!finalTranscript.keyInsights) {
+                        finalTranscript.keyInsights = [];
+                    }
+                    
+                    addLog(`Successfully processed transcript and analysis for SID: ${callSid}`, 'log-info');
+                    
+                    // Update candidate data in the main list - but check if the candidate still exists
+                    if (candidateIndex !== null && candidateIndex >= 0 && 
+                        window.currentRankings && window.currentRankings[candidateIndex]) {
+                        
+                        const candidate = window.currentRankings[candidateIndex];
+
+                        // Add AIRA assessment results - safely
+                        if (!candidate.airaAssessment) {
+                            candidate.airaAssessment = {};
+                        }
+                        
+                        candidate.airaAssessment.callCompleted = true;
+                        candidate.airaAssessment.callDate = finalTranscript.metadata?.date || new Date().toISOString();
+                        candidate.airaAssessment.callDuration = finalTranscript.metadata?.duration || 'N/A';
+                        candidate.airaAssessment.fullTranscript = finalTranscript;
+
+                        // Check if interview scheduling info came back
+                        if (transcriptData.interviewScheduling) {
+                            candidate.interviewScheduling = transcriptData.interviewScheduling;
+                            addLog(`Interview scheduling info received for ${candidate.candidateName}`, 'log-info');
+                        }
+
+                        // Update UI list item for this candidate
+                        updateCandidateWithAIRAResult(candidateIndex, finalTranscript.decision);
+
+                        // Make transcript view button visible and link it correctly
+                        viewTranscriptButton.classList.remove('hidden');
+                        viewTranscriptButton.dataset.candidateIndex = candidateIndex;
+                        
+                        updateCallStatus(`Call analysis complete for SID: ${callSid}. Decision: ${finalTranscript.decision.outcome}`);
+                    } else {
+                        addLog(`Could not find candidate at index ${candidateIndex} to update with results.`, 'log-warn');
+                        updateCallStatus(`Call analysis completed but candidate not found (index ${candidateIndex}).`);
+                    }
+
+                } catch (jsonError) {
+                    console.error("JSON parsing error:", jsonError);
+                    addLog(`JSON parsing error (get_transcript for ${callSid}): ${jsonError.message}`, 'log-error');
+                    if (responseText) {
+                        addLog(`Raw response (first 100 chars): ${responseText.substring(0, 100)}...`, 'log-error');
+                    }
+                    throw new Error('Failed to parse transcript response as JSON');
+                }
+
+            } catch (error) {
+                console.error("Error processing completed call results:", error);
+                updateCallStatus(`Error processing call results (SID: ${callSid}): ${error.message}`, true);
+                addLog(`Error processing results for SID ${callSid}: ${error.message}`, 'log-error');
+            } finally {
+                loadingOverlay.classList.remove('active');
+                cleanupCallResources(); // Clean up UI and state *after* processing
+            }
+        }
+
+
+        // Clean up call resources and reset UI elements
+        // Replace your current cleanupCallResources function with this one
+        function cleanupCallResources() {
+            addLog("Cleaning up call resources...", "log-info");
+
+            // Stop local media recording if still active (safety check)
+            if (window.mediaRecorder && window.mediaRecorder.state === "recording") {
+                window.mediaRecorder.stop();
+                addLog("Stopped lingering media recorder during cleanup.", "log-info");
+            }
+            
+            // Release microphone stream
+            if (window.audioStream) {
+                window.audioStream.getTracks().forEach(track => track.stop());
+                window.audioStream = null;
+                addLog("Released microphone stream.", "log-info");
+            }
+            
+            // Close audio context
+            if (window.audioContext && window.audioContext.state !== 'closed') {
+                window.audioContext.close();
+                window.audioContext = null;
+                addLog("Closed audio context.", "log-info");
+            }
+
+            // Hide call controls and interfaces
+            endCallBtn.classList.add('hidden');
+            recordingStatus.classList.add('hidden');
+            
+            // Reset audio player src
+            if(audioOutput) {
+                audioOutput.src = '';
+            }
+            
+            // Clear visualizer
+            if (audioVisualizer) {
+                const canvasCtx = audioVisualizer.getContext('2d');
+                if (canvasCtx) {
+                    canvasCtx.clearRect(0, 0, audioVisualizer.width, audioVisualizer.height);
+                }
+            }
+
+            // Get the current active call's index before clearing it
+            const currentCallIndex = window.activeCall ? window.activeCall.candidateIndex : null;
+
+            // Re-enable call buttons for all candidates except the one just called
+            const allButtons = document.querySelectorAll('.aira-call-button');
+            allButtons.forEach(btn => {
+                const btnIndex = parseInt(btn.dataset.candidateIndex);
+                
+                // If the button isn't for the current candidate, or if current candidate is unknown, enable it
+                if (currentCallIndex === null || btnIndex !== currentCallIndex) {
+                    // Only enable if not already marked as completed
+                    if (!btn.textContent.includes('Completed')) {
+                        btn.disabled = false;
+                        addLog(`Re-enabled call button for candidate at index ${btnIndex}`, "log-info");
+                    }
+                } else {
+                    // This is the button for the current candidate - mark it completed if not already
+                    if (!btn.textContent.includes('Completed')) {
+                        btn.textContent = 'Call Completed';
+                        btn.disabled = true;
+                        addLog(`Marked call button as completed for candidate at index ${btnIndex}`, "log-info");
+                    }
+                }
+            });
+
+            // Clear active call data *after* processing is fully done
+            window.activeCall = null;
+            addLog("Cleared active call state.", "log-info");
+
+        }
+
+
+        // Update call status in UI
+        function updateCallStatus(message, isError = false) {
+            const statusContainer = document.getElementById("call-status-container");
+            if (statusContainer) {
+                const statusElement = document.createElement("div");
+                 // Add timestamp to status messages
+                statusElement.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                statusElement.className = isError ? "call-status-error" : "call-status-info";
+
+                 // Prepend new status messages to keep the latest at the top
+                 statusContainer.prepend(statusElement);
+
+                // Also log to main progress log and console
+                 addLog(`Call Status: ${message}`, isError ? 'log-error' : 'log-info');
+                 if(isError) console.error(`AIRA Call Status: ${message}`); else console.log(`AIRA Call Status: ${message}`);
+
+                 // Optional: Limit number of status messages shown?
+                 // while (statusContainer.children.length > 10) {
+                 //     statusContainer.removeChild(statusContainer.lastChild);
+                 // }
+            }
+        }
+
+
+        // Update conversation display in main progress log UI
+        function updateConversationDisplay(speaker, message) {
+            const logDiv = document.getElementById("progress-log"); // Use the main log
+
+            if (logDiv) {
+                const entry = document.createElement("div");
+                entry.innerHTML = `<strong>${escapeHtml(speaker)}:</strong> ${escapeHtml(message)}`;
+                // Use different classes for speaker for potential styling
+                entry.className = speaker === "AIRA" ? "log-info" : "log-success"; // Example classes
+                logDiv.appendChild(entry);
+
+                // Scroll to bottom
+                logDiv.scrollTop = logDiv.scrollHeight;
+            } else {
+                 console.warn("Could not find progress log div to display conversation.");
+            }
+        }
+
+
+        // --- Audio Recording and Playback (Primarily for WebRTC/Non-Twilio testing, but hooks are used) ---
+
+        // Set up audio recording - Called when 'Initiate AIRA Call' is clicked
+        async function setupAudioRecording() {
+            // Check if already set up
+            if (window.mediaRecorder) {
+                 // Ensure stream is active, might need re-request if previously stopped
+                 if (!window.audioStream || !window.audioStream.active) {
+                     try {
+                         window.audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                         addLog("Re-acquired microphone stream.", "log-info");
+                         // Recreate recorder if stream changed significantly
+                         window.mediaRecorder = new MediaRecorder(window.audioStream);
+                         setupMediaRecorderListeners(); // Re-attach listeners
+                     } catch (error) {
+                         console.error("Error re-acquiring audio stream:", error);
+                         updateCallStatus("Error accessing microphone: " + error.message, true);
+                         addLog("Error re-accessing microphone: " + error.message, 'log-error');
+                         return false; // Indicate failure
+                     }
+                 }
+                 addLog("Audio recording already initialized.", "log-info");
+                 return true; // Indicate success
+             }
+
+             addLog("Setting up audio recording...", "log-info");
+            try {
+                // Request microphone access
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                window.audioStream = stream;
+                addLog("Microphone access granted.", "log-info");
+
+                // Set up audio context (needed for visualizer)
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                // Close existing context if necessary
+                 if (window.audioContext && window.audioContext.state !== 'closed') {
+                    await window.audioContext.close();
+                 }
+                window.audioContext = new AudioContext();
+                addLog("Audio context created.", "log-info");
+
+                // Set up media recorder
+                window.mediaRecorder = new MediaRecorder(stream); // Use appropriate mimeType if needed: { mimeType: 'audio/webm;codecs=opus' }
+                 addLog("MediaRecorder created.", "log-info");
+
+                // Set up event handlers for the recorder
+                 setupMediaRecorderListeners();
+
+                // Set up visualizer
+                setupAudioVisualizer(stream);
+                addLog("Audio visualizer set up.", "log-info");
+
+                return true; // Indicate success
+            } catch (error) {
+                console.error("Error setting up audio recording:", error);
+                updateCallStatus("Error setting up audio: " + error.message, true);
+                 addLog("Error setting up audio recording: " + error.message, 'log-error');
+                if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                    alert("Microphone access was denied. AIRA calls require microphone permission.");
+                } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                     alert("No microphone found. Please ensure a microphone is connected and enabled.");
+                 } else {
+                    alert("An error occurred while accessing the microphone.");
+                }
+                return false; // Indicate failure
+            }
+        }
+
+         // Helper to attach listeners to mediaRecorder
+         function setupMediaRecorderListeners() {
+             if (!window.mediaRecorder) return;
+
+             let audioChunks = [];
+
+             // Clear previous listeners to avoid duplicates if called multiple times
+             window.mediaRecorder.ondataavailable = null;
+             window.mediaRecorder.onstop = null;
+             window.mediaRecorder.onerror = null;
+             window.mediaRecorder.onstart = null;
+
+
+             window.mediaRecorder.addEventListener('dataavailable', event => {
+                 if (event.data.size > 0) {
+                    audioChunks.push(event.data);
+                 }
+             });
+
+             window.mediaRecorder.addEventListener('stop', async () => {
+                 addLog("MediaRecorder stopped. Processing chunks...", 'log-info');
+                 recordingStatus.classList.add('hidden'); // Hide indicator
+
+                 if (audioChunks.length === 0) {
+                     addLog("No audio data recorded in the last segment.", 'log-warn');
+                      // Decide if AIRA should prompt again or wait
+                     // Maybe call a function like `handleSilence()`?
+                     // For now, we might just wait for Twilio's speech timeout / webhook
+                     return;
+                 }
+
+                 const audioBlob = new Blob(audioChunks, { type: window.mediaRecorder.mimeType || 'audio/webm' });
+                 audioChunks = []; // Reset for next recording segment
+
+                 // --- This section is mostly for *testing* if not using Twilio streams/webhooks ---
+                 // --- In a production Twilio setup, the backend handles transcription via <Gather> or streams ---
+                 if (window.activeCall && window.activeCall.twilioCallSid) {
+                    // In a full Twilio setup, we usually don't send blobs from frontend.
+                    // We rely on Twilio's <Gather> or Media Streams sending data to backend.
+                    // However, if needed for a specific flow (e.g., fallback):
+                    // await sendAudioForTranscription(audioBlob, window.activeCall.twilioCallSid);
+                     addLog("Audio chunk captured (typically handled by Twilio/backend).", 'log-info');
+                 } else {
+                      addLog("Audio chunk captured, but no active call SID found.", 'log-warn');
+                 }
+                 // --- End of testing section ---
+
+             });
+
+             window.mediaRecorder.addEventListener('error', (event) => {
+                 console.error('MediaRecorder Error:', event.error);
+                 addLog(`MediaRecorder error: ${event.error.name} - ${event.error.message}`, 'log-error');
+                 updateCallStatus(`Audio recording error: ${event.error.name}`, true);
+                 recordingStatus.classList.add('hidden');
+             });
+
+              window.mediaRecorder.addEventListener('start', () => {
+                  addLog("MediaRecorder started.", 'log-info');
+                  recordingStatus.classList.remove('hidden'); // Show indicator
+              });
+         }
+
+         // --- Function to send audio blob to backend (Mostly for testing/fallback) ---
+         async function sendAudioForTranscription(audioBlob, callSid) {
+             if (!callSid) {
+                 addLog("Cannot transcribe audio: Missing Call SID.", "log-error");
+                 return;
+             }
+             addLog(`Sending audio chunk (${(audioBlob.size / 1024).toFixed(1)} KB) for transcription...`, 'log-info');
+             recordingStatus.textContent = "Transcribing..."; // Update indicator text
+             recordingStatus.classList.remove('hidden');
+
+
+             try {
+                 const formData = new FormData();
+                 formData.append('audio', audioBlob, `audio_${Date.now()}.webm`); // Use a dynamic filename
+                 formData.append('callSid', callSid); // Include CallSid
+
+                 const response = await fetch(`${BACKEND_BASE_URL}/transcribe_audio`, { // <<< FIXED URL
+                     method: 'POST',
+                     body: formData, // FormData sets the correct Content-Type
+                 });
+
+                 const responseText = await response.text();
+
+                 if (!response.ok) {
+                     addLog(`Transcription error response: ${responseText}`, 'log-error');
+                     throw new Error(responseText || 'Backend failed to transcribe audio');
+                 }
+
+                 let transcriptionData;
+                 try {
+                     transcriptionData = JSON.parse(responseText);
+                     if (!transcriptionData.text) {
+                         // Handle case where transcription is empty but request was ok
+                         addLog("Transcription returned empty text.", "log-warn");
+                          // Decide how to proceed - maybe prompt again?
+                         // For now, do nothing and wait for next interaction
+                         return; // Don't process empty text
+                     }
+                 } catch (jsonError) {
+                     addLog(`JSON parsing error (transcribe_audio): ${jsonError.message}`, 'log-error');
+                     addLog(`Raw response (transcribe_audio): ${responseText}`, 'log-error');
+                     throw new Error('Failed to parse transcription response as JSON');
+                 }
+
+                 const text = transcriptionData.text;
+                 addLog(`Transcription received: "${text}"`, 'log-info');
+
+                 // Process the transcribed text (e.g., send to AIRA for response)
+                 if (window.activeCall) {
+                      // This simulates the candidate speaking
+                     await handleSpeechResult(callSid, text); // Reuse the webhook handler logic
+                 }
+
+             } catch (error) {
+                 console.error("Audio transcription failed:", error);
+                 updateCallStatus("Transcription failed: " + error.message, true);
+                 addLog(`Transcription request failed: ${error.message}`, 'log-error');
+             } finally {
+                  // Reset indicator for next recording segment
+                 recordingStatus.innerHTML = '<span class="recording-indicator"></span> Recording candidate response...';
+                 // Don't hide indicator here if we expect immediate re-recording
+                 // recordingStatus.classList.add('hidden');
+             }
+         }
+
+
+        // Set up audio visualizer
+        function setupAudioVisualizer(stream) {
+            if (!window.audioContext || !audioVisualizer || !stream || !stream.active) {
+                 addLog("Cannot set up visualizer: Missing audio context, canvas, or active stream.", "log-warn");
+                 return;
+            }
+
+             addLog("Setting up audio visualizer...", "log-info");
+             const audioContext = window.audioContext;
+             let analyzer;
+             let source;
+
+             try {
+                 analyzer = audioContext.createAnalyser();
+                 source = audioContext.createMediaStreamSource(stream);
+                 source.connect(analyzer); // Connect mic input to analyzer
+
+                analyzer.fftSize = 256; // Frequency analysis detail
+                 const bufferLength = analyzer.frequencyBinCount;
+                 const dataArray = new Uint8Array(bufferLength); // Array to hold frequency data
+
+                const canvas = audioVisualizer;
+                 const canvasCtx = canvas.getContext('2d');
+
+                // Resize canvas to fit container (do this once or on resize)
+                 const resizeCanvas = () => {
+                    canvas.width = canvas.clientWidth;
+                    canvas.height = 100; // Fixed height
+                 };
+                 resizeCanvas();
+                 // Optional: Add resize listener if container size can change
+                 // window.addEventListener('resize', resizeCanvas);
+
+
+                // Drawing function - runs continuously
+                 function draw() {
+                    // Check if context/analyzer still exist before drawing
+                    if (!window.audioContext || window.audioContext.state === 'closed' || !analyzer) {
+                         // Stop drawing if context is closed or analyzer removed
+                         if (canvasCtx) { // Clear canvas on stop
+                             canvasCtx.fillStyle = 'rgb(240, 240, 240)'; // Background color
+                             canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+                         }
+                         return;
+                     }
+
+                     requestAnimationFrame(draw); // Loop the drawing
+
+                    analyzer.getByteFrequencyData(dataArray); // Get current frequency data
+
+                    // Clear the canvas
+                    canvasCtx.fillStyle = 'rgb(240, 240, 240)'; // Background color
+                    canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+                     const barWidth = (canvas.width / bufferLength) * 2.5;
+                     let x = 0;
+
+                     // Draw bars for each frequency bin
+                     for (let i = 0; i < bufferLength; i++) {
+                         const barHeight = dataArray[i] / 2.5; // Scale bar height
+
+                        // Color based on frequency amplitude (example)
+                         canvasCtx.fillStyle = `rgb(50, ${dataArray[i] + 100}, 50)`;
+                         canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+
+                         x += barWidth + 1; // Move to next bar position
+                     }
+                 }
+
+                 draw(); // Start the animation loop
+                  addLog("Audio visualizer drawing started.", "log-info");
+
+             } catch (error) {
+                 console.error("Error setting up audio visualizer:", error);
+                 addLog(`Error setting up visualizer: ${error.message}`, "log-error");
+             }
+        }
+
+
+        // --- Play Audio Synthesized by Backend ---
+         async function playAiraAudio(audioUrl) {
+             if (!audioOutput) {
+                 addLog("Audio output element not found.", "log-error");
+                 return;
+             }
+             addLog(`Playing AIRA response from: ${audioUrl}`, "log-info");
+             updateCallStatus("Playing AIRA's response...");
+
+             // Stop local recording while AIRA speaks
+             if (window.mediaRecorder && window.mediaRecorder.state === "recording") {
+                 window.mediaRecorder.stop(); // This will trigger 'onstop' event
+                 addLog("Stopped local recording for AIRA playback.", "log-info");
+                 // The 'onstop' handler might try to transcribe, which is usually okay.
+             }
+
+             try {
+                 audioOutput.src = audioUrl;
+                 audioOutput.oncanplaythrough = async () => {
+                     try {
+                        await audioOutput.play();
+                        addLog("AIRA audio playback started.", "log-info");
+                     } catch (playError) {
+                          console.error("Error playing audio:", playError);
+                          addLog(`Error playing AIRA audio: ${playError.message}`, "log-error");
+                          updateCallStatus("Error playing audio.", true);
+                          // If playback fails, maybe restart listening immediately?
+                          restartListening();
+                     }
+                 };
+                 audioOutput.onended = () => {
+                    addLog("AIRA audio playback finished.", "log-info");
+                     updateCallStatus("Finished playing AIRA response. Listening for candidate...");
+                     // --- IMPORTANT: Restart listening *after* AIRA finishes speaking ---
+                     restartListening();
+                     // Clean up object URL if it was used
+                     if (audioUrl.startsWith('blob:')) {
+                        URL.revokeObjectURL(audioUrl);
+                        addLog("Revoked blob URL.", "log-info");
+                     }
+                 };
+                 audioOutput.onerror = (e) => {
+                     console.error("Audio playback error:", audioOutput.error);
+                     addLog(`Error loading/playing AIRA audio: ${audioOutput.error?.message || 'Unknown error'}`, "log-error");
+                     updateCallStatus("Error playing AIRA audio.", true);
+                      // Attempt to restart listening even on error
+                     restartListening();
+                 };
+                 // Load the audio source
+                 audioOutput.load();
+
+             } catch (error) {
+                 console.error("Error setting up audio playback:", error);
+                 addLog(`Error setting up playback: ${error.message}`, "log-error");
+                 updateCallStatus("Error preparing audio playback.", true);
+                  // Attempt to restart listening even on error
+                 restartListening();
+             }
+         }
+
+         // --- Restart Listening (Start MediaRecorder) ---
+         function restartListening() {
+             if (!window.activeCall) {
+                  addLog("Cannot restart listening: No active call.", "log-warn");
+                  return;
+             }
+              // Start recording again if recorder exists and is inactive
+             if (window.mediaRecorder && window.mediaRecorder.state === "inactive") {
+                 try {
+                     // Check if audio stream is still active
+                     if (window.audioStream && window.audioStream.active) {
+                         window.mediaRecorder.start(); // Start recording chunks
+                         addLog("Restarted local media recorder.", "log-info");
+                         recordingStatus.classList.remove('hidden'); // Show indicator
+                     } else {
+                          addLog("Cannot restart recorder: Audio stream inactive.", "log-warn");
+                           // Attempt to re-acquire stream? Might be complex.
+                           // For now, log the issue. Backend might need to handle timeouts.
+                     }
+                 } catch (e) {
+                     console.error("Error restarting media recorder:", e);
+                     addLog(`Error restarting recorder: ${e.message}`, "log-error");
+                 }
+             } else if (window.mediaRecorder && window.mediaRecorder.state === "recording") {
+                 addLog("MediaRecorder already recording.", "log-info");
+             } else {
+                  addLog("Cannot restart listening: MediaRecorder not available or in unusable state.", "log-warn");
+             }
+         }
+
+         // Poll for task status updates and display incremental results
+        async function pollTaskStatus(taskId) {
+            if (!taskId) {
+                addLog('Cannot poll: Missing task ID', 'log-error');
+                loadingOverlay.classList.remove('active');
+                submitButton.disabled = false;
+                return;
+            }
+
+            // Keep track of processed results to avoid duplicates
+            const processedFiles = new Set();
+            
+            // Start polling loop
+            let isCompleted = false;
+            let pollCount = 0;
+            
+            while (!isCompleted && pollCount < 60) { // Stop after 60 tries (5 minutes)
+                pollCount++;
+                
+                try {
+                    // Wait a bit between polls (longer for later polls)
+                    const delay = pollCount < 5 ? 1000 : 3000; // 1s initially, then 3s
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    
+                    // Get task status
+                    const statusResponse = await fetch(`${BACKEND_BASE_URL}/get_processing_status/${taskId}`);
+                    
+                    if (!statusResponse.ok) {
+                        // Check if it's a 404 (task not found)
+                        if (statusResponse.status === 404) {
+                            addLog('Task not found. It may have been cleaned up or expired.', 'log-error');
+                            isCompleted = true;
+                            continue;
+                        }
+                        
+                        const errorText = await statusResponse.text();
+                        addLog(`Status polling error: ${errorText}`, 'log-error');
+                        throw new Error(`Failed to get task status: ${errorText}`);
+                    }
+                    
+                    const statusData = await statusResponse.json();
+                    
+                    // Update progress display
+                    const progress = statusData.progress || 0;
+                    setStatus(`Processing in progress... ${progress}%`);
+                    addLog(`Progress: ${progress}% (${statusData.processedFiles || 0}/${statusData.totalFiles || 0})`, 'log-info');
+                    
+                    // Display any incremental results
+                    if (statusData.finalRankings && statusData.finalRankings.length > 0) {
+                        // Check for any new results
+                        let hasNewResults = false;
+                        
+                        statusData.finalRankings.forEach(candidate => {
+                            // Use filename as unique identifier
+                            if (candidate.fileName && !processedFiles.has(candidate.fileName)) {
+                                processedFiles.add(candidate.fileName);
+                                hasNewResults = true;
+                                addLog(`New result: ${candidate.candidateName} (Score: ${candidate.matchScore}%)`, 'log-success');
+                            }
+                        });
+                        
+                        // If we have new results, update the display
+                        if (hasNewResults) {
+                            displayIncrementalResults(statusData.finalRankings);
+                        }
+                        
+                        // Display any email drafts that are ready
+                        if (statusData.emailDrafts && statusData.emailDrafts.length > 0) {
+                            updateEmailDrafts(statusData.emailDrafts);
+                        }
+                    }
+                    
+                    // Check for errors
+                    if (statusData.errors && statusData.errors.length > 0) {
+                        statusData.errors.forEach(error => {
+                            // Check if we've already logged this error
+                            const errorKey = error.fileName + ':' + error.error;
+                            if (!processedFiles.has(errorKey)) {
+                                processedFiles.add(errorKey);
+                                addLog(`Error processing ${error.fileName}: ${error.error}`, 'log-error');
+                            }
+                        });
+                    }
+                    
+                    // Check if task is complete
+                    if (statusData.status === 'completed') {
+                        addLog('Processing completed successfully!', 'log-success');
+                        
+                        // Store final results in the global store
+                        window.currentRankings = statusData.finalRankings || [];
+                        
+                        // Do a final render with everything sorted properly
+                        displayRankedResults(window.currentRankings);
+                        
+                        isCompleted = true;
+                        
+                        // Final status update
+                        setStatus(`Process complete. ${window.currentRankings.length} ranked, ${statusData.emailDrafts?.length || 0} email(s) drafted.`, false);
+                        
+                    } else if (statusData.status === 'failed') {
+                        addLog(`Task failed: ${statusData.error || 'Unknown error'}`, 'log-error');
+                        setStatus(`Processing failed: ${statusData.error || 'Unknown error'}`, true);
+                        isCompleted = true;
+                    }
+                    
+                } catch (error) {
+                    addLog(`Error polling for status: ${error.message}`, 'log-error');
+                    // Don't set isCompleted here to allow retries
+                    // Wait a bit longer before the next retry
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                }
+            }
+            
+            // If we exited due to too many polls
+            if (!isCompleted) {
+                addLog('Polling stopped: Maximum attempts reached', 'log-warn');
+                setStatus('Status checking timed out. Results may be incomplete.', true);
+            }
+            
+            // Final cleanup
+            loadingOverlay.classList.remove('active');
+            submitButton.disabled = false;
+        }
+
+        // Display incremental results as they arrive
+        function displayIncrementalResults(rankings) {
+            // For the first result, clear the "processing" message
+            if (rankedListOl.children.length === 1 && 
+                rankedListOl.children[0].textContent.includes('Processing')) {
+                rankedListOl.innerHTML = '';
+            }
+            
+            // Get current items and their filenames
+            const currentItems = Array.from(rankedListOl.children);
+            const currentFiles = new Set(
+                currentItems.map(li => li.dataset.fileName)
+            );
+            
+            // Process new rankings
+            rankings.forEach((candidate, index) => {
+                const fileName = candidate?.fileName || '';
+                
+                // Skip if we already have this file displayed
+                if (currentFiles.has(fileName)) return;
+                
+                // Create a new list item for this candidate
+                const li = document.createElement('li');
+                li.dataset.fileName = fileName;
+                
+                const name = candidate?.candidateName || 'Unknown Name';
+                const score = (candidate && typeof candidate.matchScore === 'number') ? candidate.matchScore.toFixed(0) : 'N/A';
+                const rationale = candidate?.matchRationale || 'No rationale provided.';
+                const email = candidate?.email || 'N/A';
+                const phone = candidate?.phoneNumber || 'N/A';
+                
+                // Use the same HTML structure as in displayRankedResults
+                li.innerHTML = `
+                    <div class="candidate-header">${name} (Score: <span class="score">${escapeHtml(score)}%</span>)</div>
+                    <span><em>Source File:</em> ${escapeHtml(fileName)}</span>
+                    <div class="contact-info">
+                        <strong>Email:</strong> ${escapeHtml(email)} | <strong>Phone:</strong> ${escapeHtml(phone)}
+                    </div>
+                    <div class="rationale">${escapeHtml(rationale)}</div>
+                `;
+                
+                // Add call button if score is high enough
+                if (candidate && candidate.matchScore >= 70 && phone && phone !== 'N/A') {
+                    const callButton = document.createElement('button');
+                    callButton.textContent = 'Initiate AIRA Call';
+                    callButton.className = 'aira-call-button';
+                    callButton.dataset.candidateIndex = 'pending'; // Will be set correctly in final render
+                    callButton.addEventListener('click', handleAIRACallButtonClick);
+                    li.appendChild(callButton);
+                } else if (candidate && candidate.matchScore >= 70) {
+                    const noPhoneMsg = document.createElement('span');
+                    noPhoneMsg.textContent = ' (Cannot call: No phone number found)';
+                    noPhoneMsg.style.fontStyle = 'italic';
+                    noPhoneMsg.style.color = '#777';
+                    li.querySelector('.contact-info').appendChild(noPhoneMsg);
+                }
+                
+                // Add highlighting for newest item
+                li.classList.add('new-result');
+                setTimeout(() => {
+                    li.classList.remove('new-result');
+                }, 3000);
+                
+                // Add to the list
+                rankedListOl.appendChild(li);
+            });
+        }
+
+        // Update email drafts incrementally
+        // Replace your current updateEmailDrafts function with this one
+        function updateEmailDrafts(drafts) {
+            if (!drafts || drafts.length === 0) return;
+            
+            // Show the section if it's hidden
+            emailDraftsSection.classList.remove('hidden');
+            
+            // Clear existing drafts first to avoid accumulation
+            emailDraftsOutputDiv.innerHTML = '';
+            
+            // Use a Set to track unique candidates (by name) we've already displayed
+            const processedCandidates = new Set();
+            
+            // Process each draft, but only display one per candidate
+            drafts.forEach(draft => {
+                const candidateName = draft.candidateName || 'Unknown';
+                
+                // Skip if we've already shown a draft for this candidate
+                if (processedCandidates.has(candidateName)) {
+                    console.log(`Skipping duplicate email draft UI for ${candidateName}`);
+                    return;
+                }
+                
+                // Add to our tracking set
+                processedCandidates.add(candidateName);
+                
+                // Display the email draft
+                displaySingleEmailDraft(candidateName, draft.emailBody);
+            });
+        }
+
+        // Add CSS for highlighting new results
+        const styleElement = document.createElement('style');
+        styleElement.textContent = `
+            .new-result {
+                animation: highlight-new 3s ease-in-out;
+            }
+            
+            @keyframes highlight-new {
+                0% { background-color: #e6f7ff; }
+                50% { background-color: #e6f7ff; }
+                100% { background-color: transparent; }
+            }
+        `;
+        document.head.appendChild(styleElement);
+
+        // --- Handle AI Response (Text -> Speech -> Playback) ---
+        async function processAiraResponse(airaMessage, callSid) {
+            if (!window.activeCall || !airaMessage) return;
+
+             addLog(`AIRA response received: "${airaMessage}"`, "log-info");
+             updateConversationDisplay("AIRA", airaMessage);
+
+             // Add to conversation history (should match what backend uses)
+             // Ensure roles are consistent ('assistant' or 'user')
+             window.activeCall.conversation.push({ role: "assistant", content: airaMessage });
+             // Add to detailed transcript log
+             window.activeCall.transcript.conversation.push({
+                 role: "assistant", content: airaMessage, timestamp: new Date().toISOString()
+             });
+
+
+            updateCallStatus("Generating AIRA speech...");
+            loadingOverlay.classList.add('active'); // Show spinner during TTS
+
+            try {
+                 // --- Generate Speech via Backend ---
+                 const ttsResponse = await fetch(`${BACKEND_BASE_URL}/generate_speech`, { // <<< FIXED URL
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ text: airaMessage, callSid: callSid }) // Send callSid if needed by backend TTS/state
+                 });
+
+                 if (!ttsResponse.ok) {
+                     const errorText = await ttsResponse.text();
+                     addLog(`Speech generation error: ${errorText}`, 'log-error');
+                     throw new Error(errorText || 'Failed to generate speech via backend');
+                 }
+
+                // Expecting audio data (e.g., MP3)
+                 const audioBlob = await ttsResponse.blob(); // Get as Blob directly
+                 if (!audioBlob || audioBlob.size === 0) {
+                     throw new Error("Backend returned empty audio data for speech.");
+                 }
+                 addLog(`Generated speech blob (${(audioBlob.size / 1024).toFixed(1)} KB)`, "log-info");
+
+                 // Create a URL for the Blob and play it
+                 const audioUrl = URL.createObjectURL(audioBlob);
+                 loadingOverlay.classList.remove('active'); // Hide spinner before playing
+                 await playAiraAudio(audioUrl); // Play the generated audio
+
+             } catch (error) {
+                 console.error("Error processing AIRA response (TTS/Playback):", error);
+                 updateCallStatus("Error generating/playing AIRA speech: " + error.message, true);
+                 addLog(`Error in processAiraResponse: ${error.message}`, 'log-error');
+                 loadingOverlay.classList.remove('active'); // Hide spinner on error
+                  // Decide if we should try to restart listening even after TTS failure
+                 restartListening();
+            }
+        }
+
+
+        // --- Initialize on page load ---
+        document.addEventListener('DOMContentLoaded', async function() {
+            addLog("DOM loaded. AIRA Recruiter ready.", "log-info");
+            // We don't request microphone access here anymore.
+            // It will be requested when the user clicks "Initiate AIRA Call".
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                 addLog('WebRTC audio recording not supported in this browser. AIRA calling features may not work.', 'log-error');
+                 alert("Your browser does not support microphone access, which is required for AIRA calls.");
+            }
+        });
+
+        // --- Twilio Webhook Simulation / Handling ---
+        // These functions are designed to be CALLED BY THE BACKEND (e.g., via WebSocket or polling)
+        // They simulate the events that would normally come directly from Twilio webhooks to your backend.
+
+        // Simulates the initial call connection event
+        window.handleIncomingCall = async function(callData) {
+            // Expected callData: { callSid, from, to, jobTitle, candidateName, stage }
+             console.log("Frontend received handleIncomingCall event:", callData);
+             const { callSid, jobTitle, candidateName, stage } = callData;
+
+             if (!window.activeCall || window.activeCall.twilioCallSid !== callSid) {
+                 console.warn(`handleIncomingCall: Received event for SID ${callSid}, but no matching active call found or SID mismatch.`);
+                 // Maybe initialize activeCall here if it's the very first event? Risky.
+                 // Best practice: Call should be initiated from frontend first.
+                 addLog(`Warning: Incoming call event for ${callSid} doesn't match active call.`, "log-warn");
+                 return;
+             }
+
+            updateCallStatus(`Call connected (SID: ${callSid}). Stage: ${stage}`);
+            addLog(`Call ${callSid} connected. Stage: ${stage}`, 'log-info');
+            window.activeCall.callStatus = 'in-progress'; // Update status
+
+
+             // --- Get the *actual* initial AIRA response ---
+             // The backend should ideally determine the first thing AIRA says.
+             // This requires another call to the backend.
+             addLog(`Getting initial AIRA prompt for call ${callSid}...`, 'log-info');
+             await getInitialAiraResponse(callSid, jobTitle, candidateName, stage);
+        };
+
+        // Fetches the very first thing AIRA should say
+        async function getInitialAiraResponse(callSid, jobTitle, candidateName, stage) {
+            if (!window.activeCall || window.activeCall.twilioCallSid !== callSid) {
+                 addLog("getInitialAiraResponse: Active call SID mismatch.", "log-warn");
+                 return;
+            }
+            updateCallStatus("Generating initial greeting...");
+             loadingOverlay.classList.add('active');
+
+             try{
+                 // Ask the backend for the first response based on the system prompt / context
+                 const response = await fetch(`${BACKEND_BASE_URL}/get_response`, { // <<< FIXED URL
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({
+                         // Send minimal conversation context (or let backend infer from SID)
+                         conversation: [
+                             // Example: send system prompt if frontend defines it
+                             // { role: "system", content: `System prompt here... candidate: ${candidateName}, job: ${jobTitle}` }
+                             // Or send empty array and let backend handle context based on SID
+                         ],
+                         callSid: callSid,
+                         isInitial: true // Flag to tell backend this is the first turn
+                     }),
+                 });
+
+                 const responseText = await response.text();
+                 if (!response.ok) {
+                     addLog(`Error getting initial response from backend: ${responseText}`, 'log-error');
+                     throw new Error(responseText || 'Failed to get initial AIRA response');
+                 }
+
+                 let responseData;
+                 try {
+                     responseData = JSON.parse(responseText);
+                     if (!responseData.response) {
+                         throw new Error("Backend response missing 'response' field.");
+                     }
+                 } catch (jsonError) {
+                     addLog(`JSON parsing error (initial_response): ${jsonError.message}`, 'log-error');
+                     addLog(`Raw response (initial_response): ${responseText}`, 'log-error');
+                     throw new Error('Failed to parse initial response as JSON');
+                 }
+
+                 const airaInitialMessage = responseData.response;
+                 loadingOverlay.classList.remove('active'); // Hide spinner before TTS/playback
+
+                 // Use the standard processing function for the response
+                 await processAiraResponse(airaInitialMessage, callSid);
+
+             } catch(error){
+                 console.error("Error getting initial AIRA response:", error);
+                 updateCallStatus("Error getting initial greeting: " + error.message, true);
+                 addLog(`Error fetching initial response for ${callSid}: ${error.message}`, 'log-error');
+                 loadingOverlay.classList.remove('active');
+                  // If initial greeting fails, maybe end the call?
+                 // endActiveCall();
+             }
+        }
+
+        // Simulates Twilio <Gather> finishing or a speech chunk from Media Streams
+        window.handleSpeechResult = async function(speechData) {
+            // Expected speechData: { callSid, speechResult, confidence? }
+             console.log("Frontend received handleSpeechResult event:", speechData);
+             const { callSid, speechResult } = speechData;
+
+             if (!window.activeCall || window.activeCall.twilioCallSid !== callSid) {
+                 console.warn(`handleSpeechResult: Received event for SID ${callSid}, but no matching active call found or SID mismatch.`);
+                 addLog(`Warning: Speech result for ${callSid} doesn't match active call.`, "log-warn");
+                 return;
+             }
+
+             if (!speechResult) {
+                 addLog(`Received empty speech result for ${callSid}. Waiting...`, "log-info");
+                 updateCallStatus("No speech detected, waiting...");
+                  // Maybe restart listening explicitly? Or rely on Twilio's timeout/next Gather.
+                 restartListening();
+                 return;
+             }
+
+            updateCallStatus(`Candidate said: "${speechResult}"`);
+             // --- Process the candidate's speech ---
+            // Stop recording momentarily while processing/AIRA speaks
+             if (window.mediaRecorder && window.mediaRecorder.state === "recording") {
+                 window.mediaRecorder.stop(); // Will trigger onstop, maybe transcription if testing
+                 addLog("Stopped local recorder to process candidate speech.", "log-info");
+             }
+
+            // Add candidate speech to conversation history
+             updateConversationDisplay("Candidate", speechResult);
+             window.activeCall.conversation.push({ role: "user", content: speechResult });
+             window.activeCall.transcript.conversation.push({
+                 role: "user", content: speechResult, timestamp: new Date().toISOString()
+             });
+
+            updateCallStatus("Generating AIRA's next response...");
+             loadingOverlay.classList.add('active');
+
+             try {
+                 // Send the updated conversation to the backend to get AIRA's next response
+                 const response = await fetch(`${BACKEND_BASE_URL}/get_response`, { // <<< FIXED URL
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({
+                         conversation: window.activeCall.conversation, // Send current history
+                         callSid: callSid
+                     }),
+                 });
+
+                 const responseText = await response.text();
+                 if (!response.ok) {
+                     addLog(`Error getting AIRA response for ${callSid}: ${responseText}`, 'log-error');
+                     throw new Error(responseText || "Failed to get AIRA response from backend");
+                 }
+
+                 let responseData;
+                 try {
+                     responseData = JSON.parse(responseText);
+                     if (!responseData.response) {
+                         throw new Error("Backend response missing 'response' field.");
+                     }
+                 } catch (jsonError) {
+                     addLog(`JSON parsing error (get_response): ${jsonError.message}`, 'log-error');
+                     addLog(`Raw response (get_response): ${responseText}`, 'log-error');
+                     throw new Error('Failed to parse AIRA response as JSON');
+                 }
+
+                 const airaMessage = responseData.response;
+                  loadingOverlay.classList.remove('active'); // Hide before TTS/playback
+
+                 // Process AIRA's text response (TTS and playback)
+                 await processAiraResponse(airaMessage, callSid); // This function handles TTS and playback
+
+             } catch (error) {
+                 console.error("Error handling speech result:", error);
+                 updateCallStatus("Error processing candidate speech: " + error.message, true);
+                 addLog(`Error getting/processing AIRA response for ${callSid}: ${error.message}`, 'log-error');
+                 loadingOverlay.classList.remove('active');
+                  // Decide recovery strategy. Maybe end call or try a generic prompt?
+                  // For now, try restarting listening.
+                 restartListening();
+             }
+        };
+
+        // Simulates the call ending event from Twilio
+        window.handleCallEnded = function(endData) {
+             // Expected endData: { callSid, callStatus }
+             console.log("Frontend received handleCallEnded event:", endData);
+            const { callSid, callStatus } = endData;
+
+            if (!window.activeCall || window.activeCall.twilioCallSid !== callSid) {
+                console.warn(`handleCallEnded: Received event for SID ${callSid}, but no matching active call found or SID mismatch.`);
+                 addLog(`Warning: Call ended event for ${callSid} doesn't match active call.`, "log-warn");
+                 // Attempt cleanup just in case UI is stuck
+                 cleanupCallResources();
+                return;
+            }
+
+            addLog(`Call ${callSid} ended with status: ${callStatus}.`, 'log-info');
+            updateCallStatus(`Call ended (Status: ${callStatus}). Finalizing...`);
+
+             // --- Trigger the final processing ---
+             // This is the correct place to call processCompletedCall
+             processCompletedCall();
+             // cleanupCallResources() will be called at the end of processCompletedCall
+        };
+
+        // Add this handler code for the View Transcript button
+        if (viewTranscriptButton) {
+            viewTranscriptButton.addEventListener('click', function() {
+                const candidateIndex = parseInt(this.dataset.candidateIndex);
+                if (isNaN(candidateIndex) || !window.currentRankings || candidateIndex >= window.currentRankings.length) {
+                    console.error("Invalid candidate index for transcript:", candidateIndex);
+                    alert("Could not load transcript: Invalid candidate data");
+                    return;
+                }
+                
+                const candidateData = window.currentRankings[candidateIndex];
+                showTranscriptModal(candidateData);
+            });
+        }
+
+
+        // --- Add WebSocket or Server-Sent Events listener here if using them ---
+        // Example using Server-Sent Events (SSE) - Requires backend setup
+         /*
+         const eventSource = new EventSource(`${BACKEND_BASE_URL}/call_events`); // Adjust endpoint
+
+         eventSource.onmessage = function(event) {
+             console.log("SSE message received:", event.data);
+             try {
+                 const eventData = JSON.parse(event.data);
+                 switch (eventData.type) {
+                     case 'call_connected':
+                         window.handleIncomingCall(eventData.payload);
+                         break;
+                     case 'speech_result':
+                         window.handleSpeechResult(eventData.payload);
+                         break;
+                     case 'call_ended':
+                         window.handleCallEnded(eventData.payload);
+                         break;
+                     case 'status_update':
+                         updateCallStatus(eventData.payload.message, eventData.payload.isError);
+                         break;
+                      // Add other event types as needed
+                     default:
+                         console.warn("Received unknown event type:", eventData.type);
+                 }
+             } catch (e) {
+                 console.error("Error parsing SSE data:", e);
+                 addLog("Error receiving update from backend.", "log-error");
+             }
+         };
+
+         eventSource.onerror = function(err) {
+             console.error("EventSource failed:", err);
+             updateCallStatus("Connection to backend updates lost.", true);
+             addLog("SSE connection error. Real-time updates may be interrupted.", "log-error");
+             // Implement reconnection logic if desired
+             eventSource.close();
+         };
+
+         addLog("Listening for real-time call events from backend...", "log-info");
+         */
+        // --- End SSE Example ---
+
+
+    </script>
+</body>
+</html>
